@@ -10,18 +10,6 @@
 #include <kern/kclock.h>
 #include <kern/env.h>
 
-//  for debug
-uint32_t DEBUG = 1;
-void debug_cprintf(const char*fmt, ...){
-    if(DEBUG){
-    	va_list ap;
-        int cnt; 
-        va_start(ap, fmt);
-        cnt = vcprintf(fmt, ap);
-        va_end(ap);
-    }
-}
-
 // These variables are set by i386_detect_memory()
 size_t npages;			// Amount of physical memory (in pages)
 static size_t npages_basemem;	// Amount of base memory (in pages)
@@ -180,12 +168,15 @@ mem_init(void)
 
     pages = (struct PageInfo *) boot_alloc(npages * sizeof(struct PageInfo));
     assert(pages != NULL);
-    memset(pages,0,npages * sizeof(struct PageInfo));
+    memset(pages,0,ROUNDUP(npages * sizeof(struct PageInfo),PGSIZE));
 
 
 	//////////////////////////////////////////////////////////////////////
 	// Make 'envs' point to an array of size 'NENV' of 'struct Env'.
 	// LAB 3: Your code here.
+    envs = (struct Env *) boot_alloc(NENV * sizeof(struct Env));
+    assert(envs != NULL);
+    memset(envs,0,ROUNDUP(NENV * sizeof(struct Env),PGSIZE));
 
 	//////////////////////////////////////////////////////////////////////
 	// Now that we've allocated the initial kernel data structures, we set
@@ -211,7 +202,7 @@ mem_init(void)
 	//    - pages itself -- kernel RW, user NONE
 	// Your code goes here:
     uint32_t size =  ROUNDUP(npages*sizeof(struct PageInfo), PGSIZE);
-    boot_map_region(kern_pgdir,UPAGES,size, PADDR(pages),PTE_U | PTE_P | PTE_W);
+    boot_map_region(kern_pgdir,UPAGES,size, PADDR(pages),PTE_U | PTE_P);
 
 	//////////////////////////////////////////////////////////////////////
 	// Map the 'envs' array read-only by the user at linear address UENVS
@@ -220,7 +211,8 @@ mem_init(void)
 	//    - the new image at UENVS  -- kernel R, user R
 	//    - envs itself -- kernel RW, user NONE
 	// LAB 3: Your code here.
-
+    size = ROUNDUP(NENV * sizeof(struct Env),PGSIZE);
+    boot_map_region(kern_pgdir,UENVS,size,PADDR(envs), PTE_P | PTE_U);
 	//////////////////////////////////////////////////////////////////////
 	// Use the physical memory that 'bootstack' refers to as the kernel
 	// stack.  The kernel stack grows down from virtual address KSTACKTOP.
@@ -476,7 +468,7 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
             if (newpage){
                 newpage->pp_ref += 1; 
                 *pde = page2pa(newpage) | PTE_P | PTE_W | PTE_U | PTE_A;
-      //          debug_cprintf(" - pgdir walk: create [pde] 0x%08x at %p\n",*pde, pde);                
+ //               cprintf(" - pgdir walk: create [pde] 0x%08x at %p\n",*pde, pde);                
                //  panic("here");
             }else{
       //          debug_cprintf(" - pgdir walk: can not alloc new page as [page table]\n"); 
@@ -521,7 +513,7 @@ boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm
         assert(pte != NULL); // todo this should never be NULL ? 
         *pte = (pa+current) | (perm | PTE_P) ;
     }
-    debug_cprintf(" - boot map region: pgdir @ %x \n",pgdir);
+//    cprintf(" - boot map region: pgdir @ %x \n",pgdir);
 
 }
 
@@ -570,7 +562,7 @@ page_insert(pde_t *pgdir, struct PageInfo *pp, void *va, int perm)
         }
         *pte = page2pa(pp) | (perm | PTE_P);
         pp->pp_ref += 1;
-   //     debug_cprintf(" - page insert: succuess\n");
+//        cprintf(" - page insert: set pte %p @ %p\n",*pte,pte);
         return 0;
     }
    //  debug_cprintf(" - page insert: fail\n");
@@ -677,7 +669,42 @@ int
 user_mem_check(struct Env *env, const void *va, size_t len, int perm)
 {
 	// LAB 3: Your code here.
+    if((uint32_t)(va + len) >= ULIM){
+        cprintf(" - user mem check: try to reach ULIM\n");
+        user_mem_check_addr = (uintptr_t) va;
+        return -E_FAULT;
+    }
+//    void *begin = (void *)ROUNDDOWN((uintptr_t)va,PGSIZE);
+    void *begin = (void *)ROUNDDOWN((uintptr_t)va, PGSIZE);
+    void *end = (void *)ROUNDUP((uintptr_t)va+len,PGSIZE);
+    pte_t * pte;
+    pde_t * pde;
+    // check before:
+    if(begin < va){
+        pte = pgdir_walk(env->env_pgdir, va, 0);
+        if(pte == NULL || !((*pte) & (PTE_P | perm))){
+            user_mem_check_addr = (uintptr_t) va;
+            return -E_FAULT;
+        }
+    }
+    for(;begin < end; begin+=PGSIZE){
+        cprintf(" - user mem check: addr %p, \n",begin);
+        pde = &curenv->env_pgdir[PDX(begin)]; 
+        if(!(*pde & (PTE_P | perm))){
+            user_mem_check_addr = (uintptr_t)begin;
+             cprintf(" - user mem check: begin %p, fail [pde]%p\n",begin,*pde);
+            return -E_FAULT;
+        }else{    
+            pte_t *base = KADDR(PTE_ADDR(*pde));
 
+            pte = &base[PTX(begin)];
+            if(!(*pte & (PTE_P | perm))){
+                user_mem_check_addr = (uintptr_t)begin;
+                cprintf(" - user mem check: begin %p, fail [pte]%p\n",begin,*pte);
+                return -E_FAULT;
+            }
+        }
+    }
 	return 0;
 }
 
