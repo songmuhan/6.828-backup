@@ -27,9 +27,26 @@ sched_yield(void)
 	// another CPU (env_status == ENV_RUNNING). If there are
 	// no runnable environments, simply drop through to the code
 	// below to halt the cpu.
-
+    idle = curenv;
+//    cprintf(" - sched yield: here %p\n",NENV);
 	// LAB 4: Your code here.
+/*
+    for(int i = 0; i < 2; i++){
+        warn("envs[%p] -> %d, parent %p",i,envs[i].env_status,envs[i].env_parent_id);
+    }
+*/
 
+    int begin = (idle == NULL)? -1: idle->env_id;
+    for(int i = 0; i < NENV; i++){
+        begin = ( begin + i ) % NENV;
+        if(envs[begin].env_status == ENV_RUNNABLE){
+            env_run(&envs[begin]);
+        }
+    }
+    if(idle && idle->env_status == ENV_RUNNING){
+        env_run(idle);
+    }    
+    
 	// sched_halt never returns
 	sched_halt();
 }
@@ -41,14 +58,18 @@ void
 sched_halt(void)
 {
 	int i;
-
+    
 	// For debugging and testing purposes, if there are no runnable
 	// environments in the system, then drop into the kernel monitor.
 	for (i = 0; i < NENV; i++) {
 		if ((envs[i].env_status == ENV_RUNNABLE ||
 		     envs[i].env_status == ENV_RUNNING ||
 		     envs[i].env_status == ENV_DYING))
-			break;
+    {
+//            panic("sched halt with runnable env\n");
+        	break;
+
+    }
 	}
 	if (i == NENV) {
 		cprintf("No runnable environments in the system!\n");
