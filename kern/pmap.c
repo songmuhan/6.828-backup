@@ -318,7 +318,7 @@ check_page_free_helper(uint32_t addr){
     int flag = -1;
     int whichcase = 0;
     if(addr == MPENTRY_PADDR){
-        cprintf(" - helper here\n");
+//        cprintf(" - helper here\n");
         flag = 0;
         whichcase = 5;
     }
@@ -391,8 +391,7 @@ page_init(void)
             pages[i].pp_ref = 0;
             pages[i].pp_link = page_free_list;
             page_free_list = &pages[i];
-        }else{
-            pages[i].pp_ref = 1;
+//            memset((void *)page2kva(&pages[i]),0,PGSIZE);
         }
 	}
 //    debug_cprintf(" - page init: end \n");
@@ -596,7 +595,7 @@ int
 page_insert(pde_t *pgdir, struct PageInfo *pp, void *va, int perm)
 {
 	// Fill this function in
- //   debug_cprintf(" - page insert: begin pgdir 0x%08x, pp 0x%08x, va 0x%08x \n",pgdir,pp,va);
+//    cprintf(" - page insert: begin pgdir 0x%08x, pp 0x%08x, va 0x%08x \n",pgdir,pp,va);
     struct PageInfo *origin = page_lookup(pgdir,va,0); // 
     if(origin){
         page_remove(pgdir,va); //remove the origin page if exist.
@@ -608,6 +607,7 @@ page_insert(pde_t *pgdir, struct PageInfo *pp, void *va, int perm)
         if(pp == page_free_list){
             pp = page_alloc(0);
             // do not clean the content
+        //    cprintf(" - page insert here?\n");
             assert(pp != NULL);
         }
         *pte = page2pa(pp) | (perm | PTE_P);
@@ -641,15 +641,16 @@ page_lookup(pde_t *pgdir, void *va, pte_t **pte_store)
     */
 
     pte_t * pte = pgdir_walk(pgdir,va,0);
-    if ((!pte) || !(*pte & PTE_P)){
-//        cprintf(" - page lookup: got pte 0x%08x, exit \n",pte);
+//    cprintf(" page lookup: pte %p\n",*pte);
+    if ((!pte) || !((*pte) & PTE_P)){
+    //    cprintf("here pte %p ?\n", pte);
         return NULL;
     }
     struct PageInfo * page = pa2page((*pte));
     if (pte_store) {
   //          cprintf(" - page lookup: *pte %p\n",*pte);
         *pte_store = pte; 
-   //     cprintf("%p %p %p\n",*(*pte_store),*pte_store,pte_store);
+//        cprintf("%p %p %p\n",*(*pte_store),*pte_store,pte_store);
     }
 
 	return page;

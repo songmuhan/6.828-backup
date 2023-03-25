@@ -37,6 +37,11 @@ syscall(int num, int check, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 	return ret;
 }
 
+void sys_show_user_page_map(envid_t envid)
+{
+    syscall(SYS_show_user_page_map,0,(uint32_t)envid,0,0,0,0);
+}
+
 void
 sys_cputs(const char *s, size_t len)
 {

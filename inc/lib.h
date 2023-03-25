@@ -29,6 +29,7 @@ extern const volatile struct Env *thisenv;
 extern const volatile struct Env envs[NENV];
 extern const volatile struct PageInfo pages[];
 
+extern void show_user_page_map(pde_t *);
 // exit.c
 void	exit(void);
 
@@ -39,6 +40,7 @@ void	set_pgfault_handler(void (*handler)(struct UTrapframe *utf));
 char*	readline(const char *buf);
 
 // syscall.c
+void sys_show_user_page_map(envid_t);
 void	sys_cputs(const char *string, size_t len);
 int	sys_cgetc(void);
 envid_t	sys_getenvid(void);

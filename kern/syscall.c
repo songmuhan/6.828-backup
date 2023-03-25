@@ -12,6 +12,34 @@
 #include <kern/console.h>
 #include <kern/sched.h>
 
+
+static void
+sys_show_user_page_map(envid_t envid)
+{
+    struct Env *env;
+    envid2env(envid,&env,1);
+    pde_t *pgdir = env->env_pgdir;
+    cprintf("envid %p\n",envid);
+    cprintf("\t+--------------- envid %08x ----------+ \n",env->env_id);
+    for(uintptr_t addr = 0; addr < USTACKTOP; addr += PTSIZE){
+        pde_t * pde = &pgdir[PDX(addr)];
+        if(*pde){
+            cprintf("\t| va 0x%08x -> pde 0x%08x \t  |\n",addr, *pde);
+            pte_t *pte_base = (pte_t*)KADDR(PTE_ADDR(*pde));
+            for(uintptr_t size = 0; size < PTSIZE; size+= PGSIZE){
+                pte_t *pte = &pte_base[PTX(addr+size)];
+                if(*pte)
+                    cprintf("\t|\t  va 0x%08x -> pte 0x%08x |\n",addr+size,*pte);
+               
+            }
+        } 
+    } 
+    cprintf("\t+-----------------------------------------+ \n");
+}
+
+
+
+
 // Print a string to the system console.
 // The string is exactly 'len' characters long.
 // Destroys the environment on memory errors.
@@ -100,7 +128,7 @@ sys_exofork(void)
     env->env_status = ENV_NOT_RUNNABLE;
     env->env_tf = curenv->env_tf;
     env->env_tf.tf_regs.reg_eax = 0;
-    warn("sys_exofork return %p",env->env_id);
+//    warn("sys_exofork return %p",env->env_id);
     return env->env_id;
 }
 
@@ -123,7 +151,7 @@ sys_env_set_status(envid_t envid, int status)
 	// LAB 4: Your code here.
     struct Env *env;
     int r = envid2env(envid, &env, 1);
-    warn("set env[%p] to %p",envid,status);
+//    warn("set env[%p] to %p",envid,status);
     if(r){
         return r;
     }
@@ -191,9 +219,10 @@ sys_page_alloc(envid_t envid, void *va, int perm)
         return r;
     }
     if((uintptr_t)va >= UTOP || (uintptr_t)va % PGSIZE != 0){
+
         return -E_INVAL;
     }
-    if(!(perm & PTE_SYSCALL)){
+    if(!(perm & PTE_P) || (!(perm & PTE_U))){
         return -E_INVAL;
     }
     page = page_alloc(ALLOC_ZERO);
@@ -205,7 +234,7 @@ sys_page_alloc(envid_t envid, void *va, int perm)
         page_free(page);
         return -E_NO_MEM;
     }
-    cprintf(" ** map pa %p to va %p, perm & PTE_U %p\n",page2pa(page),va,(perm & (PTE_W | PTE_U)));
+//    cprintf(" - sys page alloc: map pa %p to va %p, perm & PTE_U %p\n",page2pa(page),va,(perm & (PTE_W | PTE_U)));
     return 0;
 	
 }
@@ -240,6 +269,7 @@ sys_page_map(envid_t srcenvid, void *srcva,
 	// LAB 4: Your code here.
     struct Env *src, *dst;
     struct PageInfo *page;
+//    cprintf(" - sys page map: srcenvid %p, srcva %p, dstenvid %p\n",srcenvid, srcva,dstenvid);
     int r = envid2env(srcenvid,&src,1);
     if(r){
         return -E_BAD_ENV;
@@ -256,22 +286,32 @@ sys_page_map(envid_t srcenvid, void *srcva,
 
     pte_t * pte;
     page = page_lookup(src->env_pgdir,srcva,&pte);
+  //  cprintf(" - sys page map: got pte %p, page %p\n",*pte,page);
+  //  show_user_page_map(src->env_pgdir);
 
     if(page == NULL){
+        cprintf("*** null page here\n");
         return -E_INVAL;
     }
     if(!(perm & PTE_SYSCALL)){
+        cprintf("*** perm %p syscall %p perm & syscall %p here\n",perm,PTE_SYSCALL,perm & PTE_SYSCALL);
         return -E_INVAL;
     }
     if((perm & PTE_W) && (!(*pte & PTE_W))){
+        cprintf("*** perm here\n");
         return -E_INVAL;
     }
-
     r = page_insert(dst->env_pgdir,page,dstva,perm);
-
     if(r){
         return r;
     }
+
+
+
+
+
+
+
     return 0;
 	panic("sys_page_map not implemented");
 }
@@ -413,11 +453,13 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
      //       cprintf(" - syscall: sys page map  \n");
             r = sys_page_map((envid_t)a1,(void*)a2,(envid_t)a3,(void*)a4,(int)a5);
      //       cprintf(" - syscall: sys page map return  \n");
-
             break;
         case SYS_page_unmap:
             r = sys_page_unmap((envid_t)a1,(void *)a2);
-            break;    
+            break;
+        case SYS_show_user_page_map:
+            sys_show_user_page_map((envid_t)a1);
+            break;
 	    default:
             r = -E_INVAL;
 	}

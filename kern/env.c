@@ -324,7 +324,7 @@ region_alloc(struct Env *e, void *va, size_t len)
         if(r){
             panic(" - region alloc: %e", r);
         }
-//        debug_cprintf(" - region alloc: map va %p to pa %p, pde %p \n",current,page2pa(page), e->env_pgdir[PDX(page2pa(page))]);
+    //    cprintf(" - region alloc: map va %p to pa %p, pde %p \n",current,page2pa(page), e->env_pgdir[PDX(page2pa(page))]);
     } 
 }
 
@@ -391,7 +391,7 @@ load_icode(struct Env *e, uint8_t *binary)
 
     ph = (struct Proghdr *) (binary + elf->e_phoff);
     eph = ph + elf->e_phnum;
-//    debug_cprintf(" - load icode: binary ph @ %p, eph %p\n",ph, eph);
+    cprintf(" - load icode: binary ph @ %p, eph %p\n",ph, eph);
     for(; ph < eph; ph++){
 //        debug_cprintf(" - load icode: ph %p, type %p, offset %p, va %p, pa %p, filesz %p, memsz %p, flags %p, p_align %p\n",ph,ph->p_type,ph->p_offset,ph->p_va,ph->p_pa,ph->p_filesz,ph->p_memsz,ph->p_flags, ph->p_align);
         if(ph->p_type == ELF_PROG_LOAD){
@@ -420,7 +420,7 @@ load_icode(struct Env *e, uint8_t *binary)
         panic(" - load icode: %e\n",r);
     }
 	// LAB 3: Your code here.
- //   cprintf(" - load icode: finished \n");
+//    cprintf(" - load icode: finished \n");
     lcr3(PADDR(kern_pgdir));
 
 
@@ -445,7 +445,6 @@ env_create(uint8_t *binary, enum EnvType type)
     load_icode(env,binary);
     env->env_type = type;
     //cprintf(" - env create: finished \n");
-
 }
 
 //
