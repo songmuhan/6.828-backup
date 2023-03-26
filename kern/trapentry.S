@@ -69,11 +69,16 @@ TRAPHANDLER_NOEC(T_SIMDERR_handler, T_SIMDERR)
 TRAPHANDLER_NOEC(T_SYSCALL_handler, T_SYSCALL)
 
 
-
+// IRQs
+TRAPHANDLER(handler32, IRQ_OFFSET + IRQ_TIMER)
+TRAPHANDLER(handler33, IRQ_OFFSET + IRQ_KBD)
+TRAPHANDLER(handler36, IRQ_OFFSET + IRQ_SERIAL)
+TRAPHANDLER(handler39, IRQ_OFFSET + IRQ_SPURIOUS)
+TRAPHANDLER(handler46, IRQ_OFFSET + IRQ_IDE)
+TRAPHANDLER(handler51, IRQ_OFFSET + IRQ_ERROR)
 
 /*
  * Lab 3: Your code here for _alltraps
- */
  _alltraps:
     pushl %ds
     pushl %es
@@ -83,4 +88,14 @@ TRAPHANDLER_NOEC(T_SYSCALL_handler, T_SYSCALL)
     movw %ax, %es
     pushl %esp
     call trap
-
+ */
+_alltraps:
+	pushl %ds
+	pushl %es
+	pushal
+	pushl $GD_KD
+	popl %ds
+	pushl $GD_KD
+	popl %es
+	pushl %esp	//压入trap()的参数tf，%esp指向Trapframe结构的起始地址
+	call trap       //调用trap()函数

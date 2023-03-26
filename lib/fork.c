@@ -35,7 +35,7 @@ pgfault(struct UTrapframe *utf)
     if(!(pte & PTE_COW)){
         panic("pte not PTE_COW");
     }
-    cprintf(" lib/fork pgfault, va %p\n",addr);
+    // cprintf(" lib/fork pgfault, va %p\n",addr);
 	// LAB 4: Your code here.
 	// Allocate a new page, map it at a temporary location (PFTEMP),
 	// copy the data from the old page to the new page, then move the new
@@ -145,7 +145,7 @@ envid_t
 fork(void)
 {
 	// LAB 4: Your code here.
-    //cprintf(" - lib/fork: begin\n");
+    cprintf(" - lib/fork: begin ...\n");
    // sys_show_user_page_map(thisenv->env_id);
     set_pgfault_handler(pgfault);
     int envid = sys_exofork();
@@ -178,7 +178,7 @@ fork(void)
            return r; //为儿子设置一个缺页处理分支
 	if ((r = sys_env_set_status(envid, ENV_RUNNABLE)) < 0)//设置成可运行
            return r;
-//    cprintf(" - lib fork return\n");
+    cprintf(" - lib fork return\n");
     return envid;
 }
 // Challenge!

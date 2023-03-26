@@ -36,16 +36,19 @@ sched_yield(void)
     }
 */
 
-    int begin = (idle == NULL)? -1: idle->env_id;
+    uint32_t begin = (idle == NULL)? 0: idle->env_id;
     for(int i = 0; i < NENV; i++){
         begin = ( begin + i ) % NENV;
         if(envs[begin].env_status == ENV_RUNNABLE){
+                cprintf(" - shced :find env %p runnable\n",begin);
             env_run(&envs[begin]);
         }
     }
     if(idle && idle->env_status == ENV_RUNNING){
+        cprintf(" - sched : find idle env %p run\n",idle->env_id);
         env_run(idle);
-    }    
+    }   
+    cprintf(" - sched: no env run\n"); 
     
 	// sched_halt never returns
 	sched_halt();
@@ -96,7 +99,7 @@ sched_halt(void)
 		"pushl $0\n"
 		"pushl $0\n"
 		// Uncomment the following line after completing exercise 13
-		//"sti\n"
+		"sti\n"
 		"1:\n"
 		"hlt\n"
 		"jmp 1b\n"
