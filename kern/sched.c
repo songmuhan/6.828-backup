@@ -28,7 +28,7 @@ sched_yield(void)
 	// no runnable environments, simply drop through to the code
 	// below to halt the cpu.
     idle = curenv;
-//    cprintf(" - sched yield: here %p\n",NENV);
+    cprintf(" - sched yield: begin \n");
 	// LAB 4: Your code here.
 /*
     for(int i = 0; i < 2; i++){
@@ -36,16 +36,19 @@ sched_yield(void)
     }
 */
 
-    uint32_t begin = (idle == NULL)? 0: idle->env_id;
+    uint32_t begin = (idle == NULL)? 0: ENVX(idle->env_id)+1;
+    uint32_t index = begin;
+//    cprintf(" - sched: current %p \n",begin);
+//    cprintf(" - sched: cheking ...");
     for(int i = 0; i < NENV; i++){
-        begin = ( begin + i ) % NENV;
-        if(envs[begin].env_status == ENV_RUNNABLE){
-                cprintf(" - shced :find env %p runnable\n",begin);
-            env_run(&envs[begin]);
+        index = ( begin + i ) % NENV;
+        if(envs[index].env_status == ENV_RUNNABLE){
+                cprintf(" - shced :find env %p runnable\n",index);
+            env_run(&envs[index]);
         }
     }
     if(idle && idle->env_status == ENV_RUNNING){
-        cprintf(" - sched : find idle env %p run\n",idle->env_id);
+        cprintf(" - sched : find idle env %p run\n",ENVX(idle->env_id));
         env_run(idle);
     }   
     cprintf(" - sched: no env run\n"); 

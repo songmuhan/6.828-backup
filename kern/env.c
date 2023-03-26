@@ -575,7 +575,7 @@ env_run(struct Env *e)
 	//	e->env_tf to sensible values.
 
 	// LAB 3: Your code here.
-    cprintf(" - env run: env %p run\n",e->env_id);
+//    cprintf(" - env run: env %p run\n",e->env_id);
 
     if(curenv){
         if(curenv->env_status == ENV_RUNNING){
@@ -588,7 +588,6 @@ env_run(struct Env *e)
 
     curenv->env_runs += 1;
     lcr3(PADDR(curenv->env_pgdir));
-      cprintf(" - env run: lcr3\n");
   
 
     unlock_kernel();

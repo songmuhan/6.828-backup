@@ -121,6 +121,8 @@ trap_init(void)
     void handler39();
     void handler46();
     void handler51();
+
+
     // IRQs
     SETGATE(idt[IRQ_OFFSET + IRQ_TIMER], 0, GD_KT, handler32, 0);
     SETGATE(idt[IRQ_OFFSET + IRQ_KBD], 0, GD_KT, handler33, 0);
@@ -263,7 +265,8 @@ trap_dispatch(struct Trapframe *tf)
             );
             return;
         default:
-            cprintf(" - trap dispatch: trapno %d \n",tf->tf_trapno);
+            ;
+//            cprintf(" - trap dispatch: trapno %d \n",tf->tf_trapno);
     }
 	// Handle spurious interrupts
 	// The hardware sometimes raises these because of noise on the
@@ -279,9 +282,9 @@ trap_dispatch(struct Trapframe *tf)
 	// LAB 4: Your code here.
     // cprintf(" - trap dispatch: begin \n");
     if(tf->tf_trapno == IRQ_OFFSET + IRQ_TIMER){
-        cprintf(" - trap dispatch: timer interrupt\n");
+//        cprintf(" - trap dispatch: timer interrupt\n");
         lapic_eoi();
-        cprintf(" - trap dispatch: call scheduler\n");
+//        cprintf(" - trap dispatch: call scheduler\n");
         sched_yield();
         return;
     }
@@ -368,7 +371,7 @@ page_fault_handler(struct Trapframe *tf)
 	// Handle kernel-mode page faults.
 
 	// LAB 3: Your code here.
-    if((tf->tf_cs & 3) == 3){
+    if((tf->tf_cs & 3) == 0){
         cprintf(" - trap/page_fault_handler, va %p\n",fault_va);
         panic("page fault in kernel model\n");
   }

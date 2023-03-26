@@ -167,7 +167,7 @@ fork(void)
         }
     }
     //sys_show_user_page_map(envid);
-    
+    cprintf(" - lib/fork: %04x duppage to %04x \n",thisenv->env_id,envid);
     
     int r = sys_page_alloc(envid,(void *)UXSTACKTOP - PGSIZE,PTE_U|PTE_W|PTE_P);
     if(r){
@@ -178,7 +178,7 @@ fork(void)
            return r; //为儿子设置一个缺页处理分支
 	if ((r = sys_env_set_status(envid, ENV_RUNNABLE)) < 0)//设置成可运行
            return r;
-    cprintf(" - lib fork return\n");
+    cprintf(" - lib/fork: return\n");
     return envid;
 }
 // Challenge!
