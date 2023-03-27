@@ -48,9 +48,54 @@
  * Lab 3: Your code here for generating entry points for the different traps.
  */
 
+TRAPHANDLER_NOEC(T_DIVIDE_handler, T_DIVIDE)
+TRAPHANDLER_NOEC(T_DEBUG_handler, T_DEBUG)
+TRAPHANDLER_NOEC(T_NMI_handler, T_NMI)
+TRAPHANDLER_NOEC(T_BRKPT_handler, T_BRKPT)
+TRAPHANDLER_NOEC(T_OFLOW_handler, T_OFLOW)
+TRAPHANDLER_NOEC(T_BOUND_handler, T_BOUND)
+TRAPHANDLER_NOEC(T_ILLOP_handler, T_ILLOP)
+TRAPHANDLER_NOEC(T_DEVICE_handler, T_DEVICE)
+TRAPHANDLER(T_DBLFLT_handler, T_DBLFLT)
+TRAPHANDLER(T_TSS_handler, T_TSS)
+TRAPHANDLER(T_SEGNP_handler, T_SEGNP)
+TRAPHANDLER(T_STACK_handler, T_STACK)
+TRAPHANDLER(T_GPFLT_handler, T_GPFLT)
+TRAPHANDLER(T_PGFLT_handler, T_PGFLT)
+TRAPHANDLER_NOEC(T_FPERR_handler, T_FPERR)
+TRAPHANDLER(T_ALIGN_handler, T_ALIGN)
+TRAPHANDLER_NOEC(T_MCHK_handler, T_MCHK)
+TRAPHANDLER_NOEC(T_SIMDERR_handler, T_SIMDERR)
+TRAPHANDLER_NOEC(T_SYSCALL_handler, T_SYSCALL)
 
+
+// IRQs
+TRAPHANDLER_NOEC(handler32, IRQ_OFFSET + IRQ_TIMER)
+TRAPHANDLER_NOEC(handler33, IRQ_OFFSET + IRQ_KBD)
+TRAPHANDLER_NOEC(handler36, IRQ_OFFSET + IRQ_SERIAL)
+TRAPHANDLER_NOEC(handler39, IRQ_OFFSET + IRQ_SPURIOUS)
+TRAPHANDLER_NOEC(handler46, IRQ_OFFSET + IRQ_IDE)
+TRAPHANDLER_NOEC(handler51, IRQ_OFFSET + IRQ_ERROR)
 
 /*
  * Lab 3: Your code here for _alltraps
+ _alltraps:
+    pushl %ds
+    pushl %es
+    pushal
+    movw $GD_KD, %ax
+    movw %ax, %ds
+    movw %ax, %es
+    pushl %esp
+    call trap
  */
-
+_alltraps:
+	pushl %ds
+	pushl %es
+	pushal
+	pushl $GD_KD
+	popl %ds
+	pushl $GD_KD
+	popl %es
+	pushl %esp	//压入trap()的参数tf，%esp指向Trapframe结构的起始地址
+	call trap       //调用trap()函数

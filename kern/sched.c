@@ -28,9 +28,32 @@ sched_yield(void)
 	// another CPU (env_status == ENV_RUNNING). If there are
 	// no runnable environments, simply drop through to the code
 	// below to halt the cpu.
-
+    idle = curenv;
+//    cprintf(" - sched yield: begin \n");
 	// LAB 4: Your code here.
+/*
+    for(int i = 0; i < 2; i++){
+        warn("envs[%p] -> %d, parent %p",i,envs[i].env_status,envs[i].env_parent_id);
+    }
+*/
 
+    uint32_t begin = (idle == NULL)? 0: ENVX(idle->env_id)+1;
+    uint32_t index = begin;
+//    cprintf(" - sched: current %p \n",begin);
+//    cprintf(" - sched: cheking ...");
+    for(int i = 0; i < NENV; i++){
+        index = ( begin + i ) % NENV;
+        if(envs[index].env_status == ENV_RUNNABLE){
+//                cprintf(" - shced :find env %p runnable\n",index);
+            env_run(&envs[index]);
+        }
+    }
+    if(idle && idle->env_status == ENV_RUNNING){
+//        cprintf(" - sched : find idle env %p run\n",ENVX(idle->env_id));
+        env_run(idle);
+    }   
+//    cprintf(" - sched: no env run\n"); 
+    
 	// sched_halt never returns
 	sched_halt();
 }
@@ -42,14 +65,18 @@ void
 sched_halt(void)
 {
 	int i;
-
+    
 	// For debugging and testing purposes, if there are no runnable
 	// environments in the system, then drop into the kernel monitor.
 	for (i = 0; i < NENV; i++) {
 		if ((envs[i].env_status == ENV_RUNNABLE ||
 		     envs[i].env_status == ENV_RUNNING ||
 		     envs[i].env_status == ENV_DYING))
-			break;
+    {
+//            panic("sched halt with runnable env\n");
+        	break;
+
+    }
 	}
 	if (i == NENV) {
 		cprintf("No runnable environments in the system!\n");
@@ -76,7 +103,7 @@ sched_halt(void)
 		"pushl $0\n"
 		"pushl $0\n"
 		// Uncomment the following line after completing exercise 13
-		//"sti\n"
+		"sti\n"
 		"1:\n"
 		"hlt\n"
 		"jmp 1b\n"
