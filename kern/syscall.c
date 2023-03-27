@@ -17,9 +17,8 @@ static void
 sys_show_user_page_map(envid_t envid)
 {
     struct Env *env;
-    envid2env(envid,&env,1);
+    envid2env(envid,&env,0);
     pde_t *pgdir = env->env_pgdir;
-    cprintf("envid %p\n",envid);
     cprintf("\t+--------------- envid %08x ----------+ \n",env->env_id);
     for(uintptr_t addr = 0; addr < USTACKTOP; addr += PTSIZE){
         pde_t * pde = &pgdir[PDX(addr)];
@@ -272,15 +271,18 @@ sys_page_map(envid_t srcenvid, void *srcva,
 //    cprintf(" - sys page map: srcenvid %p, srcva %p, dstenvid %p\n",srcenvid, srcva,dstenvid);
     int r = envid2env(srcenvid,&src,1);
     if(r){
+        cprintf(" \t * sys page map: src %04x envid2env fail\n",srcenvid);
         return -E_BAD_ENV;
     }
 
     r = envid2env(dstenvid,&dst,1);
     if(r){
+        cprintf(" \t * sys page map: dst %04x envid2env fail\n",dstenvid);
         return -E_BAD_ENV;
     }
 
     if((uintptr_t)srcva >= UTOP || (uintptr_t)srcva % PGSIZE != 0 || (uintptr_t)dstva >= UTOP || (uintptr_t)dstva % PGSIZE != 0){
+        cprintf(" \t * sys page map: something wrong with srcva %08p, dstva %08p l\n",srcva,dstva);
         return -E_INVAL;
     }
 
@@ -303,15 +305,10 @@ sys_page_map(envid_t srcenvid, void *srcva,
     }
     r = page_insert(dst->env_pgdir,page,dstva,perm);
     if(r){
+        cprintf("*** page insert fail\n");
         return r;
     }
-
-
-
-
-
-
-
+//    cprintf("- sys page map: map %p @ %p to %p @ %p\n",srcva,srcenvid,dstva,dstenvid);
     return 0;
 	panic("sys_page_map not implemented");
 }
@@ -384,7 +381,59 @@ static int
 sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 {
 	// LAB 4: Your code here.
-	panic("sys_ipc_try_send not implemented");
+//    cprintf(" - sys ipc try send: %04x -> %04x\n",curenv->env_id,envs[ENVX(envid)].env_id);
+    struct Env *target;
+    int r = 0;
+    if( (r = envid2env(envid,&target,0))){
+        cprintf(" - kern/syscall.c:sys ipc try send: envid2env %08p fail\n",envid);
+        return r;
+    }
+    if(!target->env_ipc_recving){
+//        cprintf(" - kern/syscall.c:sys ipc try send: %08p ipc receving != 0\n",envid);
+        return -E_IPC_NOT_RECV;
+    }
+
+    target->env_ipc_recving = 0;
+    target->env_ipc_from = curenv->env_id;
+    target->env_ipc_value = value;
+    target->env_ipc_perm = 0;
+
+    if((uint32_t)target->env_ipc_dstva < UTOP && (uint32_t)srcva < UTOP){
+        if((uint32_t)srcva % PGSIZE){
+            cprintf(" - kern/syscall.c:sys ipc try send: srcva not page aligned\n");
+            return -E_INVAL;
+        }
+        if(!(perm & PTE_U) || (!(perm & PTE_P)) ){
+            cprintf(" - kern/syscall.c:sys ipc try send: perm is not set to PTE_U and PTE_P \n");
+            return -E_INVAL;
+        }
+        if(perm & (~PTE_SYSCALL)){
+            cprintf(" - kern/syscall.c:sys ipc try send: perm set to non PTE_SYSCALL \n");
+            return -E_INVAL;           
+        }
+        pte_t *pte;
+        struct PageInfo *page = page_lookup(curenv->env_pgdir,srcva,&pte);
+        if(page == NULL){
+            cprintf(" - kern/syscall.c:sys ipc try send: page at va %08p not exsit. \n",srcva);
+            return -E_INVAL;
+        }
+        if((perm & PTE_W) && (pte && (!(*pte & PTE_W)))){
+            cprintf(" - kern/syscall.c:sys ipc try send: pte %08p at va %08p not writable . \n",*pte,srcva);
+            return -E_INVAL;
+        }
+//        cprintf(" - kern/syscall/ipc try send: try to insert page %p to %p @ %p\n",page,target->env_ipc_dstva,target->env_id);
+        if((r = page_insert(target->env_pgdir,page,target->env_ipc_dstva,perm))){
+            cprintf(" - kern/syscall.c:sys ipc try send: insert %08p @ %04x  to %08p @ %04x fail. \n",srcva,curenv->env_id,target->env_ipc_dstva,target->env_id);
+            return -E_NO_MEM;
+        }
+        target->env_ipc_perm = perm;
+    }
+//        sys_show_user_page_map(target->env_id);
+//        sys_show_user_page_map(curenv->env_id);
+
+    target->env_status = ENV_RUNNABLE;
+//    cprintf(" - sys ipc try send : success\n");
+    return 0;
 }
 
 // Block until a value is ready.  Record that you want to receive
@@ -402,7 +451,14 @@ static int
 sys_ipc_recv(void *dstva)
 {
 	// LAB 4: Your code here.
-	panic("sys_ipc_recv not implemented");
+    curenv->env_ipc_recving = 1;
+    if((uint32_t)dstva < UTOP && ((uint32_t)dstva % PGSIZE == 0)){
+        curenv->env_ipc_dstva = dstva;
+    }
+    curenv->env_status = ENV_NOT_RUNNABLE;
+    curenv->env_tf.tf_regs.reg_eax = 0;
+ //   cprintf(" - sys ipc recv : %04x, envdstva %p, va %p \n",curenv->env_id,curenv->env_ipc_dstva,dstva);
+    sched_yield();
 	return 0;
 }
 
@@ -459,6 +515,12 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
             break;
         case SYS_show_user_page_map:
             sys_show_user_page_map((envid_t)a1);
+            break;
+        case SYS_ipc_try_send:
+            r = sys_ipc_try_send((envid_t)a1,(uint32_t)a2,(void *)a3,(unsigned)a4);
+            break;
+        case SYS_ipc_recv:
+            r = sys_ipc_recv((void *)a1);
             break;
 	    default:
             r = -E_INVAL;

@@ -595,12 +595,12 @@ int
 page_insert(pde_t *pgdir, struct PageInfo *pp, void *va, int perm)
 {
 	// Fill this function in
-//    cprintf(" - page insert: begin pgdir 0x%08x, pp 0x%08x, va 0x%08x \n",pgdir,pp,va);
-    struct PageInfo *origin = page_lookup(pgdir,va,0); // 
+ //   cprintf(" - page insert: begin pgdir 0x%08x, pp 0x%08x, va 0x%08x \n",pgdir,pp,va);
+    struct PageInfo *origin = page_lookup(pgdir,va,0); 
     if(origin){
         page_remove(pgdir,va); //remove the origin page if exist.
         tlb_invalidate(pgdir,va);
-//        debug_cprintf(" - page insert: reomove origin page 0x%08x and invalid tlb\n",origin);
+      //  cprintf(" - page insert: reomove origin page 0x%08x and invalid tlb\n",origin);
     }
     pte_t *pte = pgdir_walk(pgdir,va,1);
     if(pte){
@@ -612,10 +612,10 @@ page_insert(pde_t *pgdir, struct PageInfo *pp, void *va, int perm)
         }
         *pte = page2pa(pp) | (perm | PTE_P);
         pp->pp_ref += 1;
-//        cprintf(" - page insert: set pte %p @ %p\n",*pte,pte);
+       // cprintf(" - page insert: set pte %p @ %p\n",*pte,pte);
         return 0;
     }
-   //  debug_cprintf(" - page insert: fail\n");
+//    cprintf(" - page insert: fail\n");
 	return -E_NO_MEM;
 }
 

@@ -90,6 +90,7 @@ envid2env(envid_t envid, struct Env **env_store, bool checkperm)
 	// that used the same slot in the envs[] array).
 	e = &envs[ENVX(envid)];
 	if (e->env_status == ENV_FREE || e->env_id != envid) {
+        cprintf(" ------------------- never fail at here ? -----------\n");
 		*env_store = 0;
 		return -E_BAD_ENV;
 	}
