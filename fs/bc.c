@@ -49,6 +49,15 @@ bc_pgfault(struct UTrapframe *utf)
 	//
 	// LAB 5: you code here:
 
+    addr = ROUNDDOWN(addr,PGSIZE);
+    if( (r = sys_page_alloc(thisenv->env_id,addr,PTE_U | PTE_P | PTE_W))){
+        panic(" sys page alloc fail va %p",addr);
+    }
+    uint32_t secno = ((uint32_t) addr - DISKMAP) / SECTSIZE;
+    if( (r = ide_read(secno, addr,4))){
+        panic(" ide read secno %p, addr %p",secno, addr);
+    }
+
 	// Clear the dirty bit for the disk block page since we just read the
 	// block from disk
 	if ((r = sys_page_map(0, addr, 0, addr, uvpt[PGNUM(addr)] & PTE_SYSCALL)) < 0)
@@ -77,6 +86,18 @@ flush_block(void *addr)
 		panic("flush_block of bad va %08x", addr);
 
 	// LAB 5: Your code here.
+    int r;
+    addr = ROUNDDOWN(addr,PGSIZE);
+    if(va_is_mapped(addr) && va_is_dirty(addr)){
+        uint32_t secno = ((uint32_t) addr - DISKMAP) / SECTSIZE;
+        if((r = ide_write(secno,addr,4))){
+            panic(" write va %p to secno %p", addr,secno);
+        }   
+        if( (r = sys_page_map(0,addr,0,addr,PTE_SYSCALL))){
+            panic(" sys page map fail");
+        }
+    }
+    return;
 	panic("flush_block not implemented");
 }
 
