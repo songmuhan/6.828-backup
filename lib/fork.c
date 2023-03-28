@@ -2,7 +2,6 @@
 
 #include <inc/string.h>
 #include <inc/lib.h>
-
 // PTE_COW marks copy-on-write page table entries.
 // It is one of the bits explicitly allocated to user processes (PTE_AVAIL).
 #define PTE_COW		0x800
@@ -11,21 +10,33 @@
 // Custom page fault handler - if faulting page is copy-on-write,
 // map in our own private writable copy.
 //
+
+
+
 static void
 pgfault(struct UTrapframe *utf)
 {
 	void *addr = (void *) utf->utf_fault_va;
 	uint32_t err = utf->utf_err;
 	int r;
+    // todo
 
 	// Check that the faulting access was (1) a write, and (2) to a
 	// copy-on-write page.  If not, panic.
 	// Hint:
 	//   Use the read-only page table mappings at uvpt
 	//   (see <inc/memlayout.h>).
-
+    if(!(err & FEC_WR)){
+        cprintf("err code is not write, err %p, FEC_WR %p\n",err,FEC_WR);
+        panic("pgfault");
+    } 
+    pte_t pte = uvpt[PGNUM(addr)];
+//    panic("*pte %p",*pte);
+    if(!(pte & PTE_COW)){
+        panic("pte not PTE_COW");
+    }
+    // cprintf(" lib/fork pgfault, va %p\n",addr);
 	// LAB 4: Your code here.
-
 	// Allocate a new page, map it at a temporary location (PFTEMP),
 	// copy the data from the old page to the new page, then move the new
 	// page to the old page's address.
@@ -33,9 +44,24 @@ pgfault(struct UTrapframe *utf)
 	//   You should make three system calls.
 
 	// LAB 4: Your code here.
-
-	panic("pgfault not implemented");
+    r = sys_page_alloc(0,PFTEMP,PTE_U | PTE_W | PTE_P);
+    if(r){
+        panic(" sys page alloc fail");
+    }
+    addr = (void *)ROUNDDOWN((uint32_t)addr,PGSIZE);
+    memmove(PFTEMP,addr,PGSIZE);
+    r = sys_page_map(0,PFTEMP,0,addr, PTE_U | PTE_W | PTE_P);
+    if(r){
+        panic(" sys page map fail");
+    }
+    
+    r = sys_page_unmap(0, PFTEMP);
+    if(r){
+        panic(" sys page unmap fail");
+    }
+//	panic("pgfault not implemented");
 }
+
 
 //
 // Map our virtual page pn (address pn*PGSIZE) into the target envid
@@ -48,15 +74,38 @@ pgfault(struct UTrapframe *utf)
 // Returns: 0 on success, < 0 on error.
 // It is also OK to panic on error.
 //
+
+
 static int
 duppage(envid_t envid, unsigned pn)
 {
-	int r;
+ 	int r;
+ 	// LAB 4: Your code here.
+    void *addr = (void *)(pn * PGSIZE);
 
-	// LAB 4: Your code here.
-	panic("duppage not implemented");
+    pte_t pte = uvpt[pn];
+    assert(pte != 0);
+    if(pte & PTE_SHARE){
+        if((r = sys_page_map(0,addr,envid,addr,(pte & PTE_SYSCALL))))
+            panic(" - duppage: pte share");
+    }
+    else if(pte & (PTE_W | PTE_COW)){
+        if((r = sys_page_map(0,addr,envid,addr,(PTE_COW | PTE_U | PTE_P)))){
+                panic(" - duppage ");
+        }
+        if((r = sys_page_map(0,addr,0,addr,(PTE_COW | PTE_U | PTE_P)))){
+                panic(" - duppage ");
+        }
+    }else{
+        r = sys_page_map(0,addr,envid,addr,(PTE_U | PTE_P));
+        if(r){
+            panic(" - duppage ");
+        }
+    }
+
 	return 0;
 }
+
 
 //
 // User-level fork with copy-on-write.
@@ -78,9 +127,42 @@ envid_t
 fork(void)
 {
 	// LAB 4: Your code here.
-	panic("fork not implemented");
+//    cprintf(" - lib/fork: begin ...\n");
+   // sys_show_user_page_map(thisenv->env_id);
+    set_pgfault_handler(pgfault);
+    int envid = sys_exofork();
+    if(envid == 0){
+    //    cprintf(" - lib/fork: child return\n");
+        thisenv = &envs[ENVX(sys_getenvid())];
+        return 0;
+    } 
+    if(envid < 0){
+        return envid;
+    }
+	for (uintptr_t addr = 0; addr < USTACKTOP; addr += PGSIZE){
+//        cprintf(" - lib/fork: addr %08p, userstacktop %08p\n",addr,USTACKTOP);
+//        pde_t pde = uvpd[PDX(addr)];
+        if ( (uvpd[PDX(addr)] & PTE_P) && (uvpt[PGNUM(addr)] & PTE_P) ) {
+            // dup page to child
+//            cprintf(" - va %p pde %p pte %p\n",addr,uvpd[PDX(addr)],uvpt[PGNUM(addr)]);
+            duppage(envid, PGNUM(addr));
+        }
+    }
+    //sys_show_user_page_map(envid);
+//    cprintf(" - lib/fork: %04x duppage to %04x \n",thisenv->env_id,envid);
+    
+    int r = sys_page_alloc(envid,(void *)UXSTACKTOP - PGSIZE,PTE_U|PTE_W|PTE_P);
+    if(r){
+        panic("fork fail here\n");
+    }
+    extern void _pgfault_upcall(void); //缺页处理
+	if ((r = sys_env_set_pgfault_upcall(envid, _pgfault_upcall)) < 0)
+           return r; //为儿子设置一个缺页处理分支
+	if ((r = sys_env_set_status(envid, ENV_RUNNABLE)) < 0)//设置成可运行
+           return r;
+//   cprintf(" - lib/fork: return\n");
+    return envid;
 }
-
 // Challenge!
 int
 sfork(void)

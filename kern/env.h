@@ -33,4 +33,7 @@ void	env_pop_tf(struct Trapframe *tf) __attribute__((noreturn));
 			   type);					\
 	} while (0)
 
+void show_user_page_map(pde_t *pgdir);
+
+
 #endif // !JOS_KERN_ENV_H
