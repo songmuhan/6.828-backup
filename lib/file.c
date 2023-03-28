@@ -147,6 +147,8 @@ devfile_write(struct Fd *fd, const void *buf, size_t n)
     memcpy(fsipcbuf.write.req_buf,buf,MIN(req_buf_size,n));
     return fsipc(FSREQ_WRITE,NULL);
 	panic("devfile_write not implemented");
+
+
 }
 
 static int

@@ -214,16 +214,25 @@ serve_read(envid_t envid, union Fsipc *ipc)
 		cprintf("serve_read %08x %08x %08x\n", envid, req->req_fileid, req->req_n);
 
 	// Lab 5: Your code here:
-    struct OpenFile *o;
-    int r;
-    if((r = openfile_lookup(envid,req->req_fileid,&o)) < 0)
-        return r;
-    int bytes = (int)file_read(o->o_file,ret->ret_buf,req->req_n,o->o_fd->fd_offset);
-    //if(bytes == req->req_n)
-    if(bytes > 0)
-        o->o_fd->fd_offset += bytes;
+    // struct OpenFile *o;
+    // int r;
+    // if((r = openfile_lookup(envid,req->req_fileid,&o)) < 0)
+    //     return r;
+    // int bytes = (int)file_read(o->o_file,ret->ret_buf,req->req_n,o->o_fd->fd_offset);
+    // //if(bytes == req->req_n)
+    // if(bytes > 0)
+    //     o->o_fd->fd_offset += bytes;
 
-    return bytes;
+    // return bytes;
+    int r;
+    struct OpenFile *po;
+    
+    if ((r = openfile_lookup(envid, req->req_fileid, &po)) < 0)
+        return r;
+    if ((r = file_read(po->o_file, ret->ret_buf, req->req_n, po->o_fd->fd_offset)) < 0)
+        return r;
+    po->o_fd->fd_offset += r;
+    return r;
 }
 
 
@@ -238,19 +247,14 @@ serve_write(envid_t envid, struct Fsreq_write *req)
 		cprintf("serve_write %08x %08x %08x\n", envid, req->req_fileid, req->req_n);
 
 	// LAB 5: Your code here.
-    struct OpenFile *o;
     int r;
-    if((r = openfile_lookup(envid,req->req_fileid,&o)))
+    struct OpenFile *po;
+    if ((r = openfile_lookup(envid, req->req_fileid, &po)) < 0)
         return r;
-    int bytes;
-
-    bytes = (int) file_write(o->o_file,req->req_buf,req->req_n,o->o_fd->fd_offset);
-  
-  //  if(bytes == req->req_n){
-    if(bytes > 0)
-        o->o_fd->fd_offset += bytes;
-    
-    return bytes;
+    if ((r = file_write(po->o_file, req->req_buf, req->req_n, po->o_fd->fd_offset)) < 0)
+        return r;
+    po->o_fd->fd_offset += r;
+    return r;
 
 }
 

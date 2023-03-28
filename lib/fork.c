@@ -79,41 +79,23 @@ pgfault(struct UTrapframe *utf)
 static int
 duppage(envid_t envid, unsigned pn)
 {
-	int r;
-	// LAB 4: Your code here.
+ 	int r;
+ 	// LAB 4: Your code here.
     void *addr = (void *)(pn * PGSIZE);
 
-//    pde_t * src_pde = &((pde_t * uvpd)[PDX(addr)]);
-    pte_t pte = uvpt[PGNUM(addr)];
+    pte_t pte = uvpt[pn];
     assert(pte != 0);
-//    cprintf(" - duppage : va %08p,pte %08p\n",addr,pte);
-
-//    cprintf(" - duppage : va%p,pte 0x%08x\n",addr,pte);
-/*
-    int perm = pte & 0xFFF;
-    if(pte & (PTE_W | PTE_COW)){
-        perm = PTE_COW | PTE_U | PTE_P;
-        r = sys_page_map(0,addr,0,addr,perm);
-        if(r){
-                panic(" - duppage ");
-        }
+    if(pte & PTE_SHARE){
+        if((r = sys_page_map(0,addr,envid,addr,(pte & PTE_SYSCALL))))
+            panic(" - duppage: pte share");
     }
-    r = sys_page_map(0,addr,envid,addr,perm);
-    if(r){
-        panic(" - duppage ");
-    }
-	return 0;
-*/
-    if(pte & (PTE_W | PTE_COW)){
+    else if(pte & (PTE_W | PTE_COW)){
         if((r = sys_page_map(0,addr,envid,addr,(PTE_COW | PTE_U | PTE_P)))){
                 panic(" - duppage ");
         }
         if((r = sys_page_map(0,addr,0,addr,(PTE_COW | PTE_U | PTE_P)))){
                 panic(" - duppage ");
         }
-
-
-
     }else{
         r = sys_page_map(0,addr,envid,addr,(PTE_U | PTE_P));
         if(r){

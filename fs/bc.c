@@ -53,13 +53,10 @@ bc_pgfault(struct UTrapframe *utf)
     if( (r = sys_page_alloc(thisenv->env_id,addr,PTE_U | PTE_P | PTE_W))){
         panic(" sys page alloc fail va %p",addr);
     }
-    uint32_t secno = ((uint32_t) addr - DISKMAP) / SECTSIZE;
-    if( (r = ide_read(secno, addr,4))){
-        panic(" ide read secno %p, addr %p",secno, addr);
+    if( (r = ide_read(blockno * BLKSECTS, addr,BLKSECTS))){
+        panic(" ide read secno %p, addr %p",blockno * BLKSECTS, addr);
     }
 
-	// Clear the dirty bit for the disk block page since we just read the
-	// block from disk
 	if ((r = sys_page_map(0, addr, 0, addr, uvpt[PGNUM(addr)] & PTE_SYSCALL)) < 0)
 		panic("in bc_pgfault, sys_page_map: %e", r);
 
@@ -96,6 +93,10 @@ flush_block(void *addr)
         if( (r = sys_page_map(0,addr,0,addr,PTE_SYSCALL))){
             panic(" sys page map fail");
         }
+        // addr = ROUNDDOWN(addr, PGSIZE);
+        // ide_write(blockno * BLKSECTS, addr, BLKSECTS);
+        // sys_page_map(thisenv->env_id, addr, thisenv->env_id, addr, PTE_SYSCALL);
+
     }
     return;
 	panic("flush_block not implemented");

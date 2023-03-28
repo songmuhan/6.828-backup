@@ -171,7 +171,19 @@ sys_env_set_trapframe(envid_t envid, struct Trapframe *tf)
 	// LAB 5: Your code here.
 	// Remember to check whether the user has supplied us with a good
 	// address!
-	panic("sys_env_set_trapframe not implemented");
+	struct Env *env;
+    int r;
+
+    if((r = envid2env(envid,&env,1)))
+        return r;
+    
+    user_mem_assert(env,tf,(sizeof (struct Trapframe)),PTE_P);
+    env->env_tf = *tf;
+    env->env_tf.tf_cs |= 3;
+    env->env_tf.tf_eflags |= FL_IF;
+    env->env_tf.tf_eflags &= ~FL_IOPL_MASK;
+    return 0;
+
 }
 
 // Set the page fault upcall for 'envid' by modifying the corresponding struct
@@ -533,6 +545,9 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
             break;
         case SYS_ipc_recv:
             r = sys_ipc_recv((void *)a1);
+            break;
+        case SYS_env_set_trapframe:
+            r = sys_env_set_trapframe((envid_t)a1,(struct Trapframe *)a2);
             break;
 	    default:
             r = -E_INVAL;
