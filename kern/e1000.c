@@ -2,3 +2,6 @@
 #include <kern/pmap.h>
 
 // LAB 6: Your driver code here
+int e1000_attach(struct pci_func *f){
+    return 0;
+}

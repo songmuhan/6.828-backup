@@ -280,13 +280,16 @@ trap_dispatch(struct Trapframe *tf)
 
 	// Handle clock interrupts. Don't forget to acknowledge the
 	// interrupt using lapic_eoi() before calling the scheduler!
-	// LAB 4: Your code here.
-
-    // cprintf(" - trap dispatch: begin \n");
+    
+	// Add time tick increment to clock interrupts.
+	// Be careful! In multiprocessors, clock interrupts are
+	// triggered on every CPU.
+	// LAB 6: Your code here.
     if(tf->tf_trapno == IRQ_OFFSET + IRQ_TIMER){
-//        cprintf(" - trap dispatch: timer interrupt\n");
         lapic_eoi();
-//        cprintf(" - trap dispatch: call scheduler\n");
+        if(cpunum() == 0){
+            time_tick();
+        }
         sched_yield();
         return;
     }
@@ -303,10 +306,9 @@ trap_dispatch(struct Trapframe *tf)
         return ;
     }
 
-	// Add time tick increment to clock interrupts.
-	// Be careful! In multiprocessors, clock interrupts are
-	// triggered on every CPU.
-	// LAB 6: Your code here.
+
+    
+
 
 
 
