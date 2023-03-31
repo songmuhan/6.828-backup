@@ -12,6 +12,7 @@
 #include <kern/console.h>
 #include <kern/sched.h>
 #include <kern/time.h>
+#include <kern/e1000.h>
 
 
 static void
@@ -496,6 +497,26 @@ sys_time_msec(void)
 	panic("sys_time_msec not implemented");
 }
 
+static int
+sys_transmit_packet(char *buf, int size)
+{
+    if(size > ETH_MAX_PACKET_SIZE){
+        return -1;
+    }
+    user_mem_assert(curenv,buf,size,PTE_U);
+    return tx_packet(buf,size);
+}
+
+static int
+sys_receive_packet(char *buf, int size)
+{
+    panic("sys receive not implement");
+}
+
+
+
+
+
 // Dispatches to the correct kernel function, passing the arguments.
 int32_t
 syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, uint32_t a5)
@@ -561,6 +582,12 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
             break;
         case SYS_time_msec:
             r = sys_time_msec();
+            break;
+        case SYS_transmit_packet:
+            r = sys_transmit_packet((char *)a1, (int) a2);
+            break;
+        case SYS_receive_packet:
+            r = sys_receive_packet((char *)a1, (int)a2);
             break;
 	    default:
             r = -E_INVAL;

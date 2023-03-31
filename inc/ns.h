@@ -36,7 +36,11 @@ enum {
 	// The following message passes no page
 	NSREQ_TIMER,
 };
-
+enum {
+	NRES_OK = 0,
+	NRES_BUSY,
+	NRES_INVALID_REQ,
+};
 union Nsipc {
 	struct Nsreq_accept {
 		int req_s;
