@@ -12,6 +12,18 @@
 #define E1000_TCTL     0x00400  /* TX Control - RW */
 #define E1000_TIPG     0x00410  /* TX Inter-packet gap -RW */
 
+#define E1000_RDBAL    0x02800  /* RX Descriptor Base Address Low - RW */
+#define E1000_RDBAH    0x02804  /* RX Descriptor Base Address High - RW */
+#define E1000_RDLEN    0x02808  /* RX Descriptor Length - RW */
+#define E1000_RDH      0x02810  /* RX Descriptor Head - RW */
+#define E1000_RDT      0x02818  /* RX Descriptor Tail - RW */
+#define E1000_RCTL     0x00100  /* RX Control - RW */
+#define E1000_MTA      0x05200  /* Multicast Table Array - RW Array */
+#define E1000_RAL      0x05400  /* Receive Address Low - RW Array */
+#define E1000_RAH      0x05404  /* Receive Address High - RW Array */
+#define E1000_RCTL_EN             0x00000002    /* enable */
+#define E1000_RCTL_SECRC          0x04000000    /* Strip Ethernet CRC */
+#define E1000_RAH_AV  0x80000000        /* Receive descriptor valid */
 
 
 #define E1000_TCTL_RST    0x00000001    /* software reset */
@@ -27,20 +39,15 @@
 #define E1000_TCTL_MULR   0x10000000    /* Multiple request support */
 
 #define E1000_TXD_STAT_DD    0x00000001 /* Descriptor Done */
+#define E1000_RXD_STAT_DD       0x01    /* Descriptor Done */
 
 
 #define ETH_MAX_PACKET_SIZE 1518
 #define DATA_PACKET_BUFFER_SIZE 2048
-#define TX_QUEUE_SIZE 64
 
-#define MAX_PAKET_SIZE 1518 /* maximum size of an ethernet packet*/
-#define MAX_DESC_SIZE 64 /* maximum size of descriptor*/
 int e1000_attach(struct pci_func *);
 int tx_packet(char *buf, int size);
-
-struct packet{
-    char buf[MAX_PAKET_SIZE];
-};
+int rx_packet(char *buf, int size);
 
 struct e1000_tx_desc {
 	uint64_t addr;
@@ -51,3 +58,13 @@ struct e1000_tx_desc {
 	uint8_t css;
 	uint16_t special;
 } __attribute__((packed));
+
+/* Receive Descriptor */
+struct e1000_rx_desc {
+    uint64_t addr; /* Address of the descriptor's data buffer */
+    uint16_t length;     /* Length of data DMAed into data buffer */
+    uint16_t csum;       /* Packet checksum */
+    uint8_t status;      /* Descriptor status */
+    uint8_t errors;      /* Descriptor Errors */
+    uint16_t special;
+};

@@ -510,7 +510,8 @@ sys_transmit_packet(char *buf, int size)
 static int
 sys_receive_packet(char *buf, int size)
 {
-    panic("sys receive not implement");
+	user_mem_assert(curenv, buf, size, PTE_U | PTE_P | PTE_W);
+	return rx_packet(buf, size);
 }
 
 
